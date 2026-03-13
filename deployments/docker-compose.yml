@@ -1,0 +1,9 @@
+services:
+  frontend:
+    container_name: finScale-frontend
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
