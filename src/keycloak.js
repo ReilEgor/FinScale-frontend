@@ -2,8 +2,8 @@ import Keycloak from 'keycloak-js';
 
 const keycloak = new Keycloak({
     url: 'http://localhost:8081',
-    realm: 'FinScale',
-    clientId: 'finscale-frontend'
+    realm: 'fin_scale_realm',
+    clientId: 'fin_scale_auth_frontend'
 });
 let initialized = false;
 
@@ -18,16 +18,17 @@ export const initKeycloak = (onAuthenticatedCallback) => {
         .then(async (authenticated) => {
             initialized = true;
             if (authenticated) {
-                //try {
-                //    await fetch('http://localhost:8080/api/v1/users/sync', {
-                //        method: 'POST',
-                //        headers: {
-                 //           'Authorization': `Bearer ${keycloak.token}`
-                //        }
-                //    });
-                //} catch (err) {
-                //    console.error("Бэкенд FinScale пока недоступен для синхронизации", err);
-                //}
+                try {
+                    await fetch('http://localhost/api/v1/users/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${keycloak.token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                } catch (err) {
+                    console.error("FinScale backend is not yet available for synchronization", err);
+                }
 
                 setInterval(() => {
                     keycloak.updateToken(70).then((refreshed) => {
