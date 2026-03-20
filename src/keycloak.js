@@ -1,5 +1,6 @@
 import Keycloak from 'keycloak-js';
-
+import Cookies from 'js-cookie';
+import { useUserStore } from './store/useUserStore.js';
 const keycloak = new Keycloak({
     url: 'http://localhost:8081',
     realm: 'fin_scale_realm',
@@ -19,12 +20,20 @@ export const initKeycloak = (onAuthenticatedCallback) => {
             initialized = true;
             if (authenticated) {
                 try {
-                    await fetch('http://localhost/api/v1/users/sync', {
+                    const response = await fetch('http://localhost/api/v1/users/sync', {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${keycloak.token}`,
                             'Content-Type': 'application/json'
                         }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    useUserStore.getState().setUser({
+                        name: data.username,
+                        email: data.email
                     });
                 } catch (err) {
                     console.error("FinScale backend is not yet available for synchronization", err);
@@ -39,8 +48,12 @@ export const initKeycloak = (onAuthenticatedCallback) => {
                         console.error('Failed to update token');
                     });
                 }, 60000);
+
+
             }
             onAuthenticatedCallback();
+
+
         })
         .catch(console.error);
 };
@@ -61,5 +74,8 @@ export const doLogin = () => {
     keycloak.login();
 };
 
-export const doLogout = () => keycloak.logout();
+export const doLogout = () => {
+    useUserStore.getState().clearUser();
+    keycloak.logout();
+}
 export const getToken = () => keycloak.token;

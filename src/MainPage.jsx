@@ -4,10 +4,12 @@ import Dashboard from "./components/DashBoard.jsx";
 import PlaceholderPage from "./components/Placeholder.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import {Router} from "react-router-dom";
+import Settings from "./components/Settings.jsx";
+import {useUserStore} from "./store/useUserStore.js";
+import Transactions from "./components/Transactions.jsx";
 
 const MainPage = () => {
     const [activeNav, setActiveNav] = useState('dashboard');
-
     useEffect(() => {
         const style = document.createElement('style');
         style.textContent = `
@@ -26,7 +28,7 @@ const MainPage = () => {
             case 'dashboard':
                 return <Dashboard activeNav={activeNav} setActiveNav={setActiveNav} />;
             case 'transactions':
-                return <PlaceholderPage title="Transactions" />;
+                return <Transactions setActiveNav={setActiveNav}/>
             case 'analytics':
                 return <PlaceholderPage title="Analytics" />;
             case 'budgets':
@@ -34,7 +36,7 @@ const MainPage = () => {
             case 'forecasting':
                 return <PlaceholderPage title="Forecasting" />;
             case 'settings':
-                return <PlaceholderPage title="Settings" />;
+                return <Settings />;
             default:
                 return <Dashboard activeNav={activeNav} setActiveNav={setActiveNav} />;
         }
