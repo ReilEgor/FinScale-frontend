@@ -1,6 +1,7 @@
 import React, {useState, useRef} from 'react';
 import {BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import UserProfile from "./UserProfile.jsx";
+import { getToken } from '../keycloak.js'
 
 const customStyles = {
     body: {
@@ -239,12 +240,33 @@ const TransactionsPage = ({setActiveNav}) => {
         if (numMatch) setAmount(numMatch[1]);
     };
 
-    const handleConvert = () => {
-        const rates = {USD: 1, EUR: 0.92, GBP: 0.79, BTC: 0.000023, ETH: 0.00043, SOL: 0.0092};
-        const fromRate = rates[convertFrom] || 1;
-        const toRate = rates[convertTo] || 1;
-        const result = (parseFloat(convertAmount || 0) / fromRate * toRate).toFixed(2);
-        setConvertResult(result);
+    const handleConvert = async () => {
+        //const rates = {USD: 1, EUR: 0.92, GBP: 0.79, BTC: 0.000023, ETH: 0.00043, SOL: 0.0092};
+        //const result = (parseFloat(convertAmount || 0) / fromRate * toRate).toFixed(2);
+        //setConvertResult(result);
+
+        try {
+            const response = await fetch('http://localhost/api/v1/currency/convert', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    from: convertFrom,
+                    to: convertTo,
+                    amount: parseFloat(convertAmount)
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            const data = await response.json();
+            setConvertResult(data.result.toString());
+
+        } catch (err) {
+            console.error("FinScale backend is not yet available for synchronization", err);
+        }
     };
 
     const handleSwapCurrencies = () => {
