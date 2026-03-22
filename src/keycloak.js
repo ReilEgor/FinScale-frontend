@@ -50,6 +50,9 @@ export const initKeycloak = (onAuthenticatedCallback) => {
                 }, 60000);
 
 
+            }else {
+                useUserStore.getState().clearUser();
+                Cookies.remove('access_token');
             }
             onAuthenticatedCallback();
 

@@ -1,7 +1,7 @@
 import React, {useState, useRef} from 'react';
 import {BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import UserProfile from "./UserProfile.jsx";
-import { getToken } from '../keycloak.js'
+import {getToken} from '../keycloak.js'
 
 const customStyles = {
     body: {
@@ -180,6 +180,7 @@ const TransactionsPage = ({setActiveNav}) => {
     const [convertAmount, setConvertAmount] = useState('100');
     const [convertResult, setConvertResult] = useState('92.00');
     const [submitted, setSubmitted] = useState(false);
+    const [file, setFile] = useState(null);
 
     const currencySymbolsFiat = {USD: '$', EUR: '€', GBP: '£', JPY: '¥'};
     const symbolFiat = currencySymbolsFiat[currency] || '$';
@@ -241,10 +242,6 @@ const TransactionsPage = ({setActiveNav}) => {
     };
 
     const handleConvert = async () => {
-        //const rates = {USD: 1, EUR: 0.92, GBP: 0.79, BTC: 0.000023, ETH: 0.00043, SOL: 0.0092};
-        //const result = (parseFloat(convertAmount || 0) / fromRate * toRate).toFixed(2);
-        //setConvertResult(result);
-
         try {
             const response = await fetch('http://localhost/api/v1/currency/convert', {
                 method: 'POST',
@@ -282,15 +279,36 @@ const TransactionsPage = ({setActiveNav}) => {
     };
 
     const handleSubmit = () => {
+        const file = fileInputRef.current?.files[0];
+
+        if (!file) {
+            alert("Please upload a receipt first!");
+            return;
+        }
+        const transactionData = {
+            amount: parseFloat(amount),
+            currency: currency,
+            categories: categories,
+            account: account,
+            date: `${date}T${time}:00Z`,
+        };
         setSubmitted(true);
+        uploadTransaction(file, transactionData);
+
         setTimeout(() => setSubmitted(false), 2000);
     };
-
+    //TODO
     const handleFiles = (files) => {
-        const file = files[0];
-        if (file) {
-            console.log("File loaded:", file.name);
+        const selectedFile = files[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            console.log("File loaded:", selectedFile.name);
         }
+    };
+
+    const removeFile = (e) => {
+        e.stopPropagation();
+        setFile(null);
     };
 
     const inputStyle = {
@@ -322,6 +340,30 @@ const TransactionsPage = ({setActiveNav}) => {
             handleFiles(e.target.files);
         }
     }
+    const uploadTransaction = async (file, transactionData) => {
+        const formData = new FormData();
+        formData.append('receipt', file);
+        formData.append('data', JSON.stringify(transactionData));
+
+        try {
+            const response = await fetch('http://localhost/api/v1/transaction/record', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                },
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Success:', result);
+            } else {
+                console.error('Server error:', await response.json());
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+        }
+    };
     return (
         <div style={{
             flex: 1,
@@ -385,7 +427,7 @@ const TransactionsPage = ({setActiveNav}) => {
                                 </div>
                             </div>
                             <div style={{display: 'flex', gap: '12px'}}>
-                                <div style={{ position: 'relative' }}>
+                                <div style={{position: 'relative'}}>
                                     <select
                                         value={currency}
                                         onChange={e => setCurrency(e.target.value)}
@@ -417,7 +459,7 @@ const TransactionsPage = ({setActiveNav}) => {
                                         top: '50%',
                                         transform: 'translateY(-50%)',
                                         fontWeight: 600
-                                    }}>{currencyMode === "Fiat" ? symbolFiat : symbolCrypto }</span>
+                                    }}>{currencyMode === "Fiat" ? symbolFiat : symbolCrypto}</span>
                                     <input type="text" placeholder="0.00" value={amount}
                                            onChange={e => setAmount(e.target.value)}
                                            onBlur={(e) => {
@@ -557,10 +599,9 @@ const TransactionsPage = ({setActiveNav}) => {
                                 ref={fileInputRef}
                                 onChange={onFileInputChange}
                                 accept=".jpg, .jpeg"
-                                style={{ display: 'none' }}
+                                style={{display: 'none'}}
                             />
                             <div
-
                                 onDragOver={e => {
                                     e.preventDefault();
                                     setIsDragOver(true);
@@ -570,7 +611,7 @@ const TransactionsPage = ({setActiveNav}) => {
                                 onDrop={e => {
                                     e.preventDefault();
                                     setIsDragOver(false);
-                                    handleFiles(e.dataTransfer.files)
+                                    handleFiles(e.dataTransfer.files);
                                 }}
                                 style={{
                                     border: `1px dashed ${isDragOver ? '#FFFFFF' : 'rgba(255,255,255,0.12)'}`,
@@ -585,15 +626,45 @@ const TransactionsPage = ({setActiveNav}) => {
                                     fontSize: '13px',
                                     marginTop: '12px',
                                     transition: 'border-color 0.2s',
-                                    cursor: 'pointer'
-                                }}>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                     strokeWidth="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                                <span>Drag and drop receipt or click to browse</span>
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                }}
+                            >
+                                {file ? (
+                                    <>
+            <span style={{color: 'white', fontSize: '14px'}}>
+                {file.name}
+            </span>
+
+                                        <button
+                                            onClick={removeFile}
+                                            style={{
+                                                position: 'absolute',
+                                                top: '8px',
+                                                right: '8px',
+                                                background: 'rgba(255,255,255,0.1)',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: '24px',
+                                                height: '24px',
+                                                color: 'white',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                             stroke="currentColor" strokeWidth="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                            <polyline points="17 8 12 3 7 8"/>
+                                            <line x1="12" y1="3" x2="12" y2="15"/>
+                                        </svg>
+                                        <span>Drag and drop receipt or click to browse</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -644,7 +715,7 @@ const TransactionsPage = ({setActiveNav}) => {
                             fontSize: '36px',
                             fontWeight: 700,
                             letterSpacing: '-1px'
-                        }}>{currencyMode === "Fiat" ? symbolFiat : symbolCrypto }{parseFloat(amount || 0).toFixed(2)}</div>
+                        }}>{currencyMode === "Fiat" ? symbolFiat : symbolCrypto}{parseFloat(amount || 0).toFixed(2)}</div>
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end'}}>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                                 <div style={{fontSize: '14px', fontWeight: 500}}>{account.split('(')[0].trim()}</div>
